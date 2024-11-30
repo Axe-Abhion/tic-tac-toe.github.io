@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Tic Tac Toe</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #00aaff, #ff88cc);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: background 0.5s ease;
+        }
+        /* Start Screen Styles */
+        #start-screen {
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1s ease-in-out;
+        }
+        #start-screen h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        /* Game Interface Styles */
+        #game-interface {
+            display: none;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1s ease-in-out;
+        }
+        header {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #scoreboard {
+            margin: 20px 0;
+            font-size: 20px;
+            color: #333;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 10px;
+            justify-content: center;
+            margin: 20px auto;
+            animation: fadeIn 1s ease-in-out;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #eee;
+            border: 2px solid #333;
+            border-radius: 10px;
+            font-size: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.3s, box-shadow 0.3s;
+        }
+        .cell:hover {
+            transform: scale(1.1);
+            background-color: #d1e7fd;
+            box-shadow: 0px 0px 10px #007BFF;
+        }
+        .cell.taken {
+            cursor: not-allowed;
+        }
+        /* Winner Highlight (Green) */
+        .winner {
+            animation: flash 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes flash {
+            from {
+                background-color: #4caf50; /* Green for winner */
+            }
+            to {
+                background-color: #388e3c; /* Darker Green for winner */
+            }
+        }
+
+        #message {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>🎉 Welcome to Interactive Tic Tac Toe 🎉</h1>
+        <label for="rounds">Select Number of Rounds: </label>
+        <select id="rounds">
+            <option value="1">1</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="7">7</option>
+            <option value="9">9</option>
+        </select>
+        <br>
+        <button id="startBtn" class="button">Start Game</button>
+    </div>
+
+    <!-- Game Interface -->
+    <div id="game-interface">
+        <header>ABHION's Tic Tac Toe</header>
+        <div id="scoreboard">
+            Player ×: <span id="scoreX">0</span> | Player O: <span id="scoreO">0</span>
+        </div>
+        <div id="game-board"></div>
+        <p id="message">Player ×'s turn</p>
+        <button id="restartBtn" class="button">Restart Game</button>
+    </div>
+
+    <script>
+        // Game State Variables
+        let board = ["", "", "", "", "", "", "", "", ""];
+        let currentPlayer = "×"; // Start with ×
+        let scores = { "×": 0, "O": 0 }; // Scoreboard
+        let currentRound = 1;
+        let maxRounds = 1; // Default rounds
+
+        // DOM Elements
+        const message = document.getElementById("message");
+        const gameBoard = document.getElementById("game-board");
+        const restartBtn = document.getElementById("restartBtn");
+        const startBtn = document.getElementById("startBtn");
+        const startScreen = document.getElementById("start-screen");
+        const gameInterface = document.getElementById("game-interface");
+        const scoreX = document.getElementById("scoreX");
+        const scoreO = document.getElementById("scoreO");
+        const roundsSelector = document.getElementById("rounds");
+
+        // Sound Effects (Replace with your own sound URLs)
+        const clickSound = new Audio("https://freesound.org/data/previews/341/341695_5260877-lq.mp3");
+        const winSound = new Audio("https://freesound.org/data/previews/316/316847_4939433-lq.mp3");
+
+        // Initialize the Game Board
+        function createBoard() {
+            gameBoard.innerHTML = "";
+            board.forEach((cell, index) => {
+                const cellDiv = document.createElement("div");
+                cellDiv.classList.add("cell");
+                cellDiv.setAttribute("data-index", index);
+                cellDiv.addEventListener("click", makeMove);
+                gameBoard.appendChild(cellDiv);
+            });
+            message.textContent = `Player ${currentPlayer}'s turn`;
+        }
+
+        // Handle Player Moves
+        function makeMove(event) {
+            const cellIndex = event.target.getAttribute("data-index");
+            if (board[cellIndex] === "") {
+                board[cellIndex] = currentPlayer;
+                event.target.textContent = currentPlayer;
+                event.target.classList.add("taken");
+                event.target.style.backgroundColor = currentPlayer === "×" ? "#ffcccc" : "#cce5ff"; // Color code moves
+                clickSound.currentTime = 0;
+                clickSound.play();
+
+                if (checkWinner()) {
+                    winSound.currentTime = 0;
+                    winSound.play();
+                    message.textContent = `Player ${currentPlayer} wins! 🎉`;
+                    scores[currentPlayer]++;
+                    updateScoreboard();
+                    highlightWinningCells();
+                    disableBoard();
+                    if (currentRound === maxRounds) {
+                        endGame();
+                    } else {
+                        currentRound++;
+                        restartGame();
+                    }
+                } else if (board.every(cell => cell !== "")) {
+                    message.textContent = "It's a draw!";
+                } else {
+                    switchPlayer();
+                }
+            }
+        }
+
+        // Switch Player
+        function switchPlayer() {
+            currentPlayer = currentPlayer === "×" ? "O" : "×";
+            message.textContent = `Player ${currentPlayer}'s turn`;
+        }
+
+        // Check for a Winner
+        function checkWinner() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+            ];
+
+            return winningCombinations.some(combination => {
+                const [a, b, c] = combination;
+                return board[a] === currentPlayer && board[b] === currentPlayer && board[c] === currentPlayer;
+            });
+        }
+
+        // Highlight the Winning Cells
+        function highlightWinningCells() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+            ];
+
+            winningCombinations.forEach(combination => {
+                const [a, b, c] = combination;
+                if (board[a] === currentPlayer && board[b] === currentPlayer && board[c] === currentPlayer) {
+                    document.querySelectorAll(`[data-index='${a}'], [data-index='${b}'], [data-index='${c}']`)
+                        .forEach(cell => cell.classList.add("winner"));
+                }
+            });
+        }
+
+        // Disable Board After Game Over
+        function disableBoard() {
+            document.querySelectorAll(".cell").forEach(cell => cell.classList.add("taken"));
+        }
+
+        // Update Scoreboard
+        function updateScoreboard() {
+            scoreX.textContent = scores["×"];
+            scoreO.textContent = scores["O"];
+        }
+
+        // Restart Game
+        function restartGame() {
+            board = ["", "", "", "", "", "", "", "", ""];
+            createBoard();
+            currentPlayer = currentPlayer === "×" ? "O" : "×"; // Switch player for the next round
+        }
+
+        // End the Game
+        function endGame() {
+            message.textContent = "Game Over!";
+            setTimeout(() => {
+                if (scores["×"] > scores["O"]) {
+                    message.textContent = "Player × wins the series!";
+                } else if (scores["O"] > scores["×"]) {
+                    message.textContent = "Player O wins the series!";
+                } else {
+                    message.textContent = "The series is a draw!";
+                }
+            }, 1000);
+        }
+
+        // Start Button Event Listener
+        startBtn.addEventListener("click", () => {
+            maxRounds = parseInt(roundsSelector.value);
+            currentRound = 1;
+            startScreen.style.display = "none";
+            gameInterface.style.display = "block";
+            createBoard();
+        });
+
+        // Restart Button Event Listener
+        restartBtn.addEventListener("click", () => {
+            scores = { "×": 0, "O": 0 }; 
+            updateScoreboard();
+            restartGame();
+        });
+    </script>
+</body>
+</html>
